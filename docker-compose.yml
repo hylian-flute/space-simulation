@@ -1,0 +1,14 @@
+version: "3"
+services:
+  builder:
+    build: ./docker/builder
+    volumes:
+      - "./wasm-app:/home/app/wasm-app"
+    working_dir: /home/app/wasm-app
+    command: ["wasm-pack", "build", "--target", "web"]
+  server:
+    image: nginx:1.21.4-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - "./dist:/usr/share/nginx/html:ro"
