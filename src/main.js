@@ -24,6 +24,9 @@ const canvases = [
   document.getElementById("planetary-system-display-z"),
 ].map(canvas => typeGuard(canvas, HTMLCanvasElement));
 
+let prevSecond = Math.floor(Date.now() / 1000);
+let frameCount = 0;
+
 /**
  * @param {PlanetarySystemD} planetarySystem
  * @param {number} planetarySystemRadius 
@@ -31,11 +34,18 @@ const canvases = [
 function displayPlanetarySystem(planetarySystem, planetarySystemRadius) {
   const contexts = canvases.map(canvas => canvas.getContext("2d"));
   const dimension = contexts.length;
-  for (const context of contexts) context.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+  for (const context of contexts) {
+    context.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    context.fillStyle = "red";
+    context.beginPath();
+    context.arc(CANVAS_SIZE / 2, CANVAS_SIZE / 2, 8, 0, 2 * Math.PI);
+    context.fill();
+    context.fillStyle = "white";
+  }
   const planets = planetarySystem.get_planets();
   const maxWieght = Math.max(...planets.map(planet => planet.get_weight()));
   for (const planet of planets) {
-    const color = `rgb(255, ${Math.floor(255 * planet.get_weight() / maxWieght)}, 0)`;
+    const weightRate = planet.get_weight() / maxWieght;
     const scaledPosition = planet
       .get_position()
       .map(axisPosition =>
@@ -43,13 +53,15 @@ function displayPlanetarySystem(planetarySystem, planetarySystemRadius) {
           (axisPosition + planetarySystemRadius) * CANVAS_SIZE / (2 * planetarySystemRadius)
         ));
     for (const [contextIdx, context] of contexts.entries()) {
-      context.fillStyle = color;
-      context.fillRect(
+      context.beginPath();
+      context.arc(
         scaledPosition[(contextIdx + 1) % dimension],
         scaledPosition[(contextIdx + 2) % dimension],
-        2,
-        2
+        Math.round(8 * weightRate),
+        0,
+        2 * Math.PI
       );
+      context.fill();
     }
   }
 }
@@ -59,14 +71,17 @@ function displayPlanetarySystem(planetarySystem, planetarySystemRadius) {
  * @param {number} planetarySystemRadius 
  */
 function tick(planetarySystem, planetarySystemRadius) {
-  const t = Date.now();
+  ++frameCount;
+  const second = Math.floor(Date.now() / 1000);
+  if (second > prevSecond) {
+    fpsCounter.textContent = frameCount.toString();
+    frameCount = 0;
+    prevSecond = second;
+  }
+
   planetarySystem.tick();
   displayPlanetarySystem(planetarySystem, planetarySystemRadius);
-  setTimeout(() => {
-    const time = Date.now() - t;
-    fpsCounter.textContent = Math.floor(1000 / time).toString();
-    tick(planetarySystem, planetarySystemRadius);
-  }, 1000 / 10);
+  requestAnimationFrame(() => tick(planetarySystem, planetarySystemRadius));
 }
 
 // @ts-ignore
@@ -76,4 +91,4 @@ const planetarySystem = PlanetarySystem.new();
 /** @type {Number} */
 const planetarySystemRadius = get_planetary_system_radius();
 
-tick(planetarySystem, planetarySystemRadius);
+requestAnimationFrame(() => tick(planetarySystem, planetarySystemRadius));
